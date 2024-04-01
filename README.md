@@ -1,6 +1,6 @@
 # 인프런 강의
 
-해당 저장소의 `README.md`는 인프런 김영한님의 SpringBoot 강의 시리즈를 듣고 Spring 프레임워크의 방대한 기술들을 복기하고자 공부한 내용을 가볍게 정리한 것입니다. 문제가 될 시 삭제하겠습니다.
+해당 저장소의 `README.md`는 인프런 김영한님의 Spring Boot 강의 시리즈를 듣고 Spring 프레임워크의 방대한 기술들을 복기하고자 공부한 내용을 가볍게 정리한 것입니다. 문제가 될 시 삭제하겠습니다.
 
 
 
@@ -76,7 +76,154 @@ public class ItemUpdateDto {
 
 
 
+## 프로젝트 구조 설명2 - 설정
 
+스프링 부트에 설정된 내용을 분석한다.
+
+[MemoryConfig]
+
+* 서비스와 리포지토리는 구현체를 편리하게 변경하기 위해, 이렇게 수동 빈으로 등록한다.
+
+```java
+package hello.itemservice.config;
+
+import hello.itemservice.repository.ItemRepository;
+import hello.itemservice.repository.memory.MemoryItemRepository;
+import hello.itemservice.service.ItemService;
+import hello.itemservice.service.ItemServiceV1;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+/**
+ * 서비스와 리포지토리는 구현체를 편리하게 변경하기 위해 수동 빈으로 등록함
+ */
+@Configuration
+public class MemoryConfig {
+
+    @Bean
+    public ItemService itemService() {
+        return new ItemServiceV1(itemRepository());
+    }
+
+    @Bean
+    public ItemRepository itemRepository() {
+        return new MemoryItemRepository();
+    }
+
+}
+```
+
+
+
+
+
+[TestDataInit]
+
+* 애플리케이션을 실행할 때 초기 데이터를 저장한다.
+* `@EventListner(ApplicationReadyEvent.class)`: 스프링 컨테이너가 완전히 초기화를 다 끝내고 실행 준비가 되었을 때 발생하는 이벤트이다.
+  * `@PostConstruct`를 사용할 경우 AOP 같은 부분이 아직 다 처리되지 않은 시점에 호출될 수 있기 때문에 문제가 발생할 수 있다. 예를 들어 `@Transactional`과 관련된 AOP가 적용되지 않은 상태로 호출될 수 있다.
+
+```java
+package hello.itemservice;
+
+import hello.itemservice.domain.Item;
+import hello.itemservice.repository.ItemRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
+
+/**
+ * 애플리케이션을 실행할 때 초기 데이터를 저장
+ */
+@Slf4j
+@RequiredArgsConstructor
+public class TestDataInit {
+
+    private final ItemRepository itemRepository;
+
+    /**
+     * 확인용 초기 데이터 추가
+     * @EventListener: 스프링 컨테이너가 완전히 초기화를 끝내고, 실행 준비가 되었을 때 발생하는 이벤트
+     * - 스프링이 이 시점에 해당 애노테이션이 붙은 메서드를 실행한다.
+     * - 참고로 @PostConstruct를 사용할 경우 AOP 같은 부분이 아직 다 처리되지 않은 시점에 호출될 수 있기 때문에, 간혹 문제가 될 수 있다.
+     * - 해당 애노테이션은 AOP를 포함한 스프링 컨테이너가 완전히 초기화 된 이후에 호출되기 때문에 이런 문제가 발생하지 않는다.
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    public void initData() {
+        log.info("test data init");
+        itemRepository.save(new Item("itemA", 10000, 10));
+        itemRepository.save(new Item("itemB", 20000, 20));
+    }
+
+}
+```
+
+
+
+
+
+[ItemServiceApplication]
+
+* `@Import(MemoryConfig.class)`: `MemoryConfig` 파일을 설정 파일로 사용한다.
+* `@SpringBootApplication(scanBasePackages = "hello.itemservice.web")`: 컴포넌트 스캔으로 범위를 지정한다. 나머지는 수동 빈으로 등록한다.
+* `@Profile("local")`: 특정 프로필의 경우에만 해당 스프링 빈을 등록한다.
+  * 여기서는 local로 설정되어 있으므로 <u>스프링에서 프로필을 local로 설정했을 때만 `testDataInit`이라는 스프링 빈을 등록한다.</u>
+
+```java
+package hello.itemservice;
+
+import hello.itemservice.config.*;
+import hello.itemservice.repository.ItemRepository;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Profile;
+
+
+@Import(MemoryConfig.class) // 앞서 설정한 MemoneyConfig를 설정 파일로 사용
+@SpringBootApplication(scanBasePackages = "hello.itemservice.web") // 컨트롤러만 컴포넌트 스캔 사용
+public class ItemServiceApplication {
+
+    public static void main(String[] args) {
+       SpringApplication.run(ItemServiceApplication.class, args);
+    }
+
+    @Bean
+    @Profile("local") // 특정 프로필의 경우에만 해당 스프링 빈을 등록한다.
+    public TestDataInit testDataInit(ItemRepository itemRepository) {
+       return new TestDataInit(itemRepository);
+    }
+
+}
+```
+
+
+
+#### 프로필 추가 설명
+
+스프링은 로딩 시점에 `application.properties`의 `spring.profiles.active` 속성을 읽어서 프로필로 사용한다.
+**이 프로필은 로컬, 운영 환경, 테스트 실행 등등 다양한 환경에 따라 다른 설정을 할 때 사용하는 정보이다.**
+
+* 로컬, 테스트 환경, 운영 환경에서 다른 설정 정보에 접근하거나,
+* 환경에 따라 다른 스프링 빈을 등록하고 싶을 때 사용하면 된다.
+
+
+
+**프로필에는 크게 2가지로 나뉜다.**
+
+* **main 프로필** - `/src/main/resources` 하위의 `application.properties`
+  * 이 위치의 `application.properties`는 `/src/main` 하위의 자바 객체를 실행할 때(주로 `main()`) 동작하는 스프링 설정이다.
+  * `spring.profiles.active=local`이라고 설정하면 스프링은 local이라는 프로필로 동작하므로, 위의 테스트 코드에서 `@Profile("local")`이 동작하고, `testDataInit`이 스프링 빈으로 등록된다.
+* **test 프로필** - `/src/test/resources` 하위의 `application.properties`
+  * 이 위치의 `application.properties`는 `/src/test` 하위의 자바 객체를 실행할 때 동작하는 스프링 설정이다.
+  * 주로 테스트 케이스를 실행할 때 동작한다.
+  * 이 경우 `@Profile("local")` 프로필 정보가 맞지 않으므로 동작하지 않는다. 따라서 `testDataInit`이 스프링 빈으로 등록되지 않는다.
+
+
+
+<u>결국 프로필 덕분에 로컬에서는 초기 데이터를 자동으로 추가해서 쉽게 확인해볼 수 있고, 테스트에서는 초기 데이터를 추가하지 않아 정확한 테스트가 유연하게 가능하다.</u>
 
 
 
