@@ -1,6 +1,16 @@
+# 인프런 강의
+
+해당 저장소의 `README.md`는 인프런 김영한님의 SpringBoot 강의 시리즈를 듣고 Spring 프레임워크의 방대한 기술들을 복기하고자 공부한 내용을 가볍게 정리한 것입니다. 문제가 될 시 삭제하겠습니다.
+
+
+
+## 해당 프로젝트에서 배우는 내용
+
+* 섹션 1 | 데이터 접근 기술 - 시작
+
+
+
 # 섹션 1 | 데이터 접근 기술 - 시작
-
-
 
 ## 데이터 접근 기술 소개
 
@@ -24,6 +34,45 @@
 * 예: JPA, Hibernate, 스프링 데이터 JPA, Querydsl
 
 
+
+## 프로젝트 구조 설명1 - 기본
+
+> 학습에서 나온 내용을 모두 요약하기 보다는 새로 배우는 내용에 대해서만 정리를 하려고 한다.
+
+
+
+[ItemUpdateDto]
+
+```java
+package hello.itemservice.repository;
+
+import lombok.Data;
+
+@Data
+public class ItemUpdateDto {
+    private String itemName;
+    private Integer price;
+    private Integer quantity;
+
+    public ItemUpdateDto() {
+    }
+
+    public ItemUpdateDto(String itemName, Integer price, Integer quantity) {
+        this.itemName = itemName;
+        this.price = price;
+        this.quantity = quantity;
+    }
+}
+```
+
+
+
+#### Dto(data transfer object)
+
+* 데이터 전송 객체
+* DTO는 기능은 없고 데이터 전달을 하는 용도로 사용되는 객체를 뜻한다.
+* DTO에 기능이 없으면 안되는 것은 아니지만, 객체의 주 목적이 데이터를 전송하는 것이라면 DTO라고 할 수 있다.
+  * 또한 DTO를 뒤에 붙여준다면 용도를 알 수 있다는 장점이 있다.
 
 
 
