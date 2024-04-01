@@ -1,3 +1,13 @@
+## 프로젝트 구조 설명3 - 테스트
+
+#### 테스트 코드
+
+[ItemRepositoryTest]
+
+* `afterEach()`
+  * 인터페이스에는 `clearStore()`가 없기 때문에 `MemoryItemRepository`인 경우에만 다운 캐스팅을 해서 데이터를 초기화한다.
+
+```java
 package hello.itemservice.domain;
 
 import hello.itemservice.repository.ItemRepository;
@@ -109,3 +119,10 @@ class ItemRepositoryTest {
         assertThat(result).containsExactly(items); // 해당 아이템들의 포함 여부 뿐만 아니라 순서까지 체크한다.
     }
 }
+```
+
+
+
+#### 인터페이스를 테스트하자
+
+여기서는 `MemoryItemRepository` 구현체를 테스트 하는 것이 아니라 `ItemRepository` 인터페이스를 테스트하는 것을 확인할 수 있다. <u>인터페이스를 대상으로 테스트하면 향후 다른 구현체로 변경되었을 때 해당 구현체가 잘 동작하는지 같은 테스트로 편리하게 검증할 수 있다.</u>
